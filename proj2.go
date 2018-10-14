@@ -269,25 +269,167 @@ func (userdata *User) StoreFile(filename string, data []byte) {
 // metadata you need.
 
 func (userdata *User) AppendFile(filename string, data []byte) (err error) {
-    /// NOTE: argon(username||counter, password, 32) --> 16:Kmac and 16:iv
+ //    /// NOTE: argon(username||counter, password, 32) --> 16:Kmac and 16:iv
+ //    /// need to recompute different iv's for every block encryption 
+
+	// // 1. Generate keys and corresponding data to generate argon and get file:
+	// argon_input := userdata.Username + "0" 
+	// argon_keys := userlib.Argon2Key([]byte(argon_input), []byte(filename), 80)
+
+	// Kgen_file := argon_keys[:16]
+	// iv := argon_keys[16:32]
+	// Hmac_key := argon_keys[32:48]
+	// key_blocks := argon_keys[48:64]	
+	// file_ID := argon_keys[64:80]
+
+ //    // 2. Get the file. 
+ //    IV_EncryptedStruct, ok := userlib.DatastoreGet(string(file_ID))
+
+ //    // 2.1 If file does not exist return error 
+ //    if !ok{
+ //    	return errors.New("File not found")
+ //    }
+
+ //    // 3. If file exists then break file into Hmac(E(struct))||IV||E(struct)
+ //    mac_ := IV_EncryptedStruct[:32]
+ //    iv_ := IV_EncryptedStruct[32:48]
+ //    E_file := IV_EncryptedStruct[48:]
+
+ //    // 4. Get the mac of the encrypted file
+ //    mac := userlib.NewHMAC(Hmac_key)
+	// mac.Write(E_file)
+	// E_fileMac := mac.Sum(nil)
+
+ //        // 4.1 if data is corrupted then return an error 
+	// if string(E_fileMac) != string(mac_) { 
+	// 	return errors.New("Found corrupted Mac")
+	// }
+
+	//     // 4.2 if data is not corrupted then decrypt the file struct 
+	//     // Using the information obtained above from the user 
+	// decrypted_file := cfb_decrypt(Kgen_file, E_file, iv)
+
+	//     // 4.3 After decrypting then unmarshall and get the struct
+	// var fileStruct File
+	// json.Unmarshal(decrypted_file, &fileStruct)
+
+	// // 6. For range of mapkeysToHmacs (cause counter is being increased at the end of append):
+	// //	mapkeysToHmacs map[string][]byte
+	// for key_string, hmac := range (fileStruct).mapkeysToHmacs {
+
+	//     // Get encrypted data block in datastore using userlib.DatastoreGet(StringMackey)
+	//     iv_DataBlock, ok := userlib.DatastoreGet(key_string)
+        
+ //        /// Just here for debugging purposes. Remove after 
+	//     if !ok {
+	//     	return errors.New("Could not found value mapped to that key")
+	//     }
+
+	//     // Brake the data block into iv and encrypted block 
+	//     e_DataBlock := iv_DataBlock[16:]
+
+	//     // convert StringMackey -> key []bytes and get the HMAC of encrypted data block
+	//     key_mac := []byte(key_string) //convert from string back to bytes 
+	//     _mac := userlib.NewHMAC(key_mac)
+	//     _mac.Write(e_DataBlock)
+	//     _BlockMac := mac.Sum(nil) 
+
+	//     // Compare this value to HMAC_block
+	//     if string(_BlockMac) != string(hmac) {
+	//     	return errors.New("Possible corruption found")
+	//     }
+ //    }
+	      
+	// // 5. Use Argon to generate Kmac, and iv for data block with: (UUID), salt:username 
+	// ///NOte fox problem with UUID ->bytes 
+	// uuid_DataBlock := uuid.New()
+
+	// //argon_block := string(count) + userdata.Username
+	// key_iv_block := userlib.Argon2Key([]byte(uuid_DataBlock), []byte(userdata.Username), 32)
+
+	// k_block_Hmac := key_iv_block[:16]
+	// iv_block := key_iv_block[16:32]
+
+	// // 6. store encrypted block using string(k_block_Hmac): iv||Ecfb((userdata) in datastore //NOTE: Might want to convert
+	// // The key to a int not and string since it might produce overhead 
+	
+	// // Encrypt data block
+	// e_DataBlock := cfb_encrypt((fileStruct).DataBlocksEncryptKey, data, iv_block)
+
+
+	// // Get mac of E(datablock) .... and store it in mapping 
+	// _mac := userlib.NewHMAC(k_block_Hmac)
+	// _mac.Write(e_DataBlock)
+	// _BlockMac := mac.Sum(nil) 
+
+	// (fileStruct).MapkeysToHmacsSet(string(k_block_Hmac), _BlockMac)
+
+	// // Append IV||E(datablock)
+	// IV_EDATA := append(iv_block, e_DataBlock...)
+    
+	// // Store userlib.DataStoreSet()
+	// userlib.DatastoreSet(string(k_block_Hmac), IV_EDATA)
+
+	// //7. Encrypt the file struct again ... values changed so we have now different encryption 
+	// argon_finput := userdata.Username + "0" 
+	// argon_fkeys := userlib.Argon2Key([]byte(argon_finput), []byte(filename), 80)
+
+	// Kgen_ffile := argon_fkeys[:16]
+	// iv_f := argon_fkeys[16:32]
+	// Hmac_fkey := argon_fkeys[32:48]
+	// ffile_ID := argon_fkeys[48:64]
+    
+ //    //Note: Maybe I need to generate a UUID in this case
+ //    //Risking having 2 ranges have the same number ID,
+ //    // I have to make it unique 
+	// //ffile_ID := argon_fkeys[64:80]
+
+	// Ffile_, _ := json.Marshal(fileStruct)
+
+	// Encrypted_File := cfb_encrypt(Kgen_file, Ffile_, iv_f)
+
+	// //4. Get the Hmac of the encryption 
+	// _mac_ := userlib.NewHMAC(Hmac_fkey)
+	// _mac_.Write(Encrypted_File)
+	// expectedMAC := _mac_.Sum(nil)
+
+	// //5. Concat Hmac(E(struct))||IV||E(struct)
+	// Mac_IV := append(expectedMAC, iv...)
+	// MacIV_EncryptedStruct := append(Mac_IV, Encrypted_File...)
+
+	// //6. Store in the file 
+ //    userlib.DatastoreSet(string(ffile_ID), MacIV_EncryptedStruct)
+
+	return
+}
+
+// This loads a file from the Datastore.
+//
+// It should give an error if the file is corrupted in any way.
+func (userdata *User) LoadFile(filename string) (data []byte, err error) {
     /// need to recompute different iv's for every block encryption 
 
 	// 1. Generate keys and corresponding data to generate argon and get file:
-	argon_input := userdata.Username + "0" 
+    argon_input := userdata.Username + "0" 
 	argon_keys := userlib.Argon2Key([]byte(argon_input), []byte(filename), 80)
 
 	Kgen_file := argon_keys[:16]
 	iv := argon_keys[16:32]
 	Hmac_key := argon_keys[32:48]
-	key_blocks := argon_keys[48:64]	
-	file_ID := argon_keys[64:80]
+	file_ID := argon_keys[48:64]
+
+	//Ommiting getting the key for encypting the data blocks since it has already being stored in file 
+    //Note: Maybe I need to generate a UUID in this case
+    //Risking having 2 ranges have the same number ID,
+    // I have to make it unique 
+	//key_blocks := argon_keys[64:80]
 
     // 2. Get the file. 
     IV_EncryptedStruct, ok := userlib.DatastoreGet(string(file_ID))
 
     // 2.1 If file does not exist return error 
     if !ok{
-    	return errors.New("File not found")
+    	return nil, errors.New("File not found")
     }
 
     // 3. If file exists then break file into Hmac(E(struct))||IV||E(struct)
@@ -300,159 +442,59 @@ func (userdata *User) AppendFile(filename string, data []byte) (err error) {
 	mac.Write(E_file)
 	E_fileMac := mac.Sum(nil)
 
-        // 4.1 if data is corrupted then return an error 
+    // 4.1 if data is corrupted then return an error 
 	if string(E_fileMac) != string(mac_) { 
-		return errors.New("Found corrupted Mac")
+		return nil, errors.New("Found corrupted Mac")
 	}
 
-	    // 4.2 if data is not corrupted then decrypt the file struct 
-	    // Using the information obtained above from the user 
+	// 4.2 if data is not corrupted then decrypt the file struct 
+	// Using the information obtained above from the user 
 	decrypted_file := cfb_decrypt(Kgen_file, E_file, iv)
 
-	    // 4.3 After decrypting then unmarshall and get the struct
+	// 4.3 After decrypting them unmarshall and get the struct
 	var fileStruct File
 	json.Unmarshal(decrypted_file, &fileStruct)
 
-	// 6. For range of mapkeysToHmacs (cause counter is being increased at the end of append):
-	//	mapkeysToHmacs map[string][]byte
-	for key_string, hmac := range (fileStruct).mapkeysToHmacs {
+	// 5. For every data block stored check if data is corrupted if not then store in data variable
 
-	    // Get encrypted data block in datastore using userlib.DatastoreGet(StringMackey)
-	    iv_DataBlock, ok := userlib.DatastoreGet(key_string)
+	// Create a data variable 
+	var data_to_return []byte 
+
+	for key_string, hmac := range (fileStruct).mapkeysToHmacs {
+	  	// Get encrypted data block in datastore using userlib.DatastoreGet(StringMackey)
+	  	iv_DataBlock, ok := userlib.DatastoreGet(key_string)
         
         /// Just here for debugging purposes. Remove after 
-	    if !ok {
-	    	return errors.New("Could not found value mapped to that key")
+	  	if !ok {
+	  		return errors.New("Could not found value mapped to that key")
 	    }
 
 	    // Brake the data block into iv and encrypted block 
 	    e_DataBlock := iv_DataBlock[16:]
+	    iv_data := iv_DataBlock[16:32]
 
 	    // convert StringMackey -> key []bytes and get the HMAC of encrypted data block
 	    key_mac := []byte(key_string) //convert from string back to bytes 
 	    _mac := userlib.NewHMAC(key_mac)
-	    _mac.Write(e_DataBlock)
-	    _BlockMac := mac.Sum(nil) 
+	    _mac.Write(iv_DataBlock)
+	   	_BlockMac := mac.Sum(nil) 
 
 	    // Compare this value to HMAC_block
+	   	// If found corrupted data then return nill, error
 	    if string(_BlockMac) != string(hmac) {
-	    	return errors.New("Possible corruption found")
-	    }
+	    	return nil, errors.New("Data block corrupted")
+	   	}
+
+	    // Decrypt data block 
+	   	data_decrypted := cfb_decrypt(fileStruct.DataBlocksEncryptKey, e_DataBlock, iv_data) 
+	  
+	  // append the raw data []bytes to our current data variable 
+	   	 data_to_return := append(data_to_return, data_decrypted...)
+
     }
-	      
-	// 5. Use Argon to generate Kmac, and iv for data block with: (UUID), salt:username 
-	///NOte fox problem with UUID ->bytes 
-	uuid_DataBlock := uuid.New()
 
-	//argon_block := string(count) + userdata.Username
-	key_iv_block := userlib.Argon2Key([]byte(uuid_DataBlock), []byte(userdata.Username), 32)
-
-	k_block_Hmac := key_iv_block[:16]
-	iv_block := key_iv_block[16:32]
-
-	// 6. store encrypted block using string(k_block_Hmac): iv||Ecfb((userdata) in datastore //NOTE: Might want to convert
-	// The key to a int not and string since it might produce overhead 
-	
-	// Encrypt data block
-	e_DataBlock := cfb_encrypt((fileStruct).DataBlocksEncryptKey, data, iv_block)
-
-
-	// Get mac of E(datablock) .... and store it in mapping 
-	_mac := userlib.NewHMAC(k_block_Hmac)
-	_mac.Write(e_DataBlock)
-	_BlockMac := mac.Sum(nil) 
-
-	(fileStruct).MapkeysToHmacsSet(string(k_block_Hmac), _BlockMac)
-
-	// Append IV||E(datablock)
-	IV_EDATA := append(iv_block, e_DataBlock...)
-    
-	// Store userlib.DataStoreSet()
-	userlib.DatastoreSet(string(k_block_Hmac), IV_EDATA)
-
-	//7. Encrypt the file struct again ... values changed so we have now different encryption 
-	argon_finput := userdata.Username + "0" 
-	argon_fkeys := userlib.Argon2Key([]byte(argon_finput), []byte(filename), 80)
-
-	Kgen_ffile := argon_fkeys[:16]
-	iv_f := argon_fkeys[16:32]
-	Hmac_fkey := argon_fkeys[32:48]
-	ffile_ID := argon_fkeys[48:64]
-    
-    //Note: Maybe I need to generate a UUID in this case
-    //Risking having 2 ranges have the same number ID,
-    // I have to make it unique 
-	//ffile_ID := argon_fkeys[64:80]
-
-	Ffile_, _ := json.Marshal(fileStruct)
-
-	Encrypted_File := cfb_encrypt(Kgen_file, Ffile_, iv_f)
-
-	//4. Get the Hmac of the encryption 
-	_mac_ := userlib.NewHMAC(Hmac_fkey)
-	_mac_.Write(Encrypted_File)
-	expectedMAC := _mac_.Sum(nil)
-
-	//5. Concat Hmac(E(struct))||IV||E(struct)
-	Mac_IV := append(expectedMAC, iv...)
-	MacIV_EncryptedStruct := append(Mac_IV, Encrypted_File...)
-
-	//6. Store in the file 
-    userlib.DatastoreSet(string(ffile_ID), MacIV_EncryptedStruct)
-
-	return
-}
-
-// This loads a file from the Datastore.
-//
-// It should give an error if the file is corrupted in any way.
-func (userdata *User) LoadFile(filename string) (data []byte, err error) {
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-	return
-
-	////------------------------------From previows design-----------------------///
-	// 1. Reconstruct KgenF and IV using Argon2
-	// pass := userdata.Username + "0"
-	// NewKgenF := userlib.Argon2Key([]byte(pass), []byte(filename), 32)
-	// NKgenF := NewKgenF[:16]
-	// iv_shared_files := NewKgenF[16:32]
-
-	// 2. Get and decrypt the File struct from DataStore
-
-	// 4. Return an error if the file struct_0 has been tampered with (check
-	// signature and HMAC)
-
-	// 5. Retrieve the count from the structure
-
-	// 6. Initialize all_data variable with struct_0->data
-
-	// 7. For i between 1 and count (inclusive)
-
-	// 7.a. Reconstruct KgenF, IV, and signature_id using Argon2 (using index = i)
-
-	// 7.b. Get and decrypt the File struct from DataStore
-
-	// 7.c. Return an error if the file struct_i has been tampered with (check
-	// signature and HMAC)
-
-	// 7.d. Append struct_i->data to all_data
-
-	// 8. Return all_data
-	
+	 // 6. if none of the data was corrupted then return the data 
+	return data_to_return, err
 }
 
 // You may want to define what you actually want to pass as a
